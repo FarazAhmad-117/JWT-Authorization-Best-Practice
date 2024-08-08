@@ -1,37 +1,68 @@
-import express from 'express';
-import cors from 'cors';
 import { config } from 'dotenv';
-import logger from 'morgan';
-import connectDb from './db/connectDb.js';
+config();
+import express from 'express';
+const app = express();
 import path from 'path';
+import cors from 'cors';
+import corsOptions from './config/corsOptions.js';
+import { logger } from './middleware/logEvents.js';
+import errorHandler from './middleware/errorHandler.js';
+import verifyJWT from './middleware/verifyJWT.js';
+import cookieParser from 'cookie-parser';
+import credentials from './middleware/credentials.js';
+import mongoose from 'mongoose';
+import connectDB from './config/dbConn.js';
 import { fileURLToPath } from 'url';
 
-config();
+// Routes imports;
+import root from './routes/root.js';
+import register from './routes/register.js';
+import auth from './routes/auth.js';
+import refresh from './routes/refresh.js';
+import logout from './routes/logout.js';
+import employees from './routes/api/employees.js';
+import users from './routes/api/users.js';
 
-const port = process.env.PORT || process.args[2] || 8089;
-const app = express();
+const PORT = process.env.PORT || 3500;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Connect to MongoDB
+connectDB();
 
-app.use(express.static('public'));
-app.use(express.json({
-    limit:process.env.JSON_LIMIT
-}));
-app.use(express.urlencoded({extended:false}));
-app.use(cors({
-    origin:process.env.CORS_ORIGIN
-}))
-app.use(logger('dev'));
+// custom middleware logger
+app.use(logger);
 
+// Handle options credentials check - before CORS!
+// and fetch cookies credentials requirement
+app.use(credentials);
 
-app.get('/',(req,res)=>{
-    res.status(200).send('Hello World');
-})
+// Cross Origin Resource Sharing
+app.use(cors(corsOptions));
 
-app.get('/api',(req,res)=>{
-    res.status(200).json({message:'Api is working'})
-});
+// built-in middleware to handle urlencoded form data
+app.use(express.urlencoded({ extended: false }));
+
+// built-in middleware for json 
+app.use(express.json());
+
+//middleware for cookies
+app.use(cookieParser());
+
+//serve static files
+app.use('/', express.static(path.join(__dirname, '/public')));
+
+// routes
+app.use('/', root);
+app.use('/register', register);
+app.use('/auth', auth);
+app.use('/refresh', refresh);
+app.use('/logout', logout);
+
+app.use(verifyJWT);
+app.use('/employees', employees);
+app.use('/users', users);
 
 app.all('*', (req, res) => {
     res.status(404);
@@ -44,16 +75,9 @@ app.all('*', (req, res) => {
     }
 });
 
+app.use(errorHandler);
 
-connectDb().then(()=>{
-    app.listen(port,()=>{
-        console.log(`Server is running at http://localhost:${port}`);
-    })
-})
-.catch((err)=>{
-    console.log('Error conecting db',err);
-    process.env(1);
-})
-
-
-
+mongoose.connection.once('open', () => {
+    console.log('Connected to MongoDB');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+});

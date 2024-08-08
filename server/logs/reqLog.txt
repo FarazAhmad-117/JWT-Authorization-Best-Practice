@@ -1,0 +1,2 @@
+20240808	10:24:13	9ad5483a-af59-4d81-99b1-5055ce481135	GET	undefined	/
+20240808	10:24:13	092db4ff-aa7f-408c-be32-124eacdad485	GET	undefined	/css/style.css
