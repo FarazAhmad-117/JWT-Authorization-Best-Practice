@@ -1,13 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from 'dotenv';
-import args from  process.argv;
 import logger from 'morgan';
-import connectDb from './db/connectDb';
+import connectDb from './db/connectDb.js';
 
 config();
 
-const port = process.env.PORT || args[2] || 8001;
+const port = process.env.PORT || process.args[2] || 8001;
 const app = express();
 
 
@@ -19,7 +18,7 @@ app.use(express.urlencoded());
 app.use(cors({
     origin:process.env.CORS_ORIGIN
 }))
-app.use(logger());
+app.use(logger('dev'));
 
 
 app.get('/',(req,res)=>{
